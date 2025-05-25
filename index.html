@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador de Recursos de Tecnología Musical</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Visualization & Content Choices: 
+        - Introducción/Análisis del Informe (Secciones 1, 2, 4 del MD): Meta: Informar/Contextualizar. Viz/Método: Bloques de texto (HTML/Tailwind). Interacción: Ninguna. Justificación: Mejor para contenido narrativo.
+        - Categorías de Herramientas (de Tabla 1 y Sección 4 MD): Meta: Organizar/Navegar. Viz/Método: Secciones de página con títulos H2, enlazadas desde Barra de Navegación. Interacción: Clic para desplazar. Justificación: Estructura clara.
+        - Herramientas Individuales (Nombre, Desc, URL, Notas de Tabla 1 MD): Meta: Informar. Viz/Método: Tarjetas (HTML/Tailwind). Interacción: URL clicable si está presente. Justificación: Visualización organizada de detalles de herramientas.
+        - Distribución de Herramientas (Conteo por categoría): Meta: Comparar/Informar. Viz/Método: Gráfico de Barras (Chart.js/Canvas). Interacción: Tooltips. Justificación: Resumen visual de la densidad de recursos.
+        - Prevalencia de Herramientas de IA (Conteo de herramientas/categorías de IA vs. total): Meta: Comparar/Informar. Viz/Método: Gráfico de Donas (Chart.js/Canvas). Interacción: Tooltips. Justificación: Destaca la tendencia de IA.
+        - Diagrama de Flujo (IA en tareas del profesor): Meta: Organizar. Viz/Método: HTML/CSS/Tailwind (divs, bordes, flex). Interacción: Ninguna. Justificación: Visualización simple de procesos.
+        - Análisis DAFO (Educador del Futuro): Meta: Organizar. Viz/Método: HTML/CSS/Tailwind (cuadrícula de tarjetas). Interacción: Ninguna. Justificación: Análisis estructurado.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f4; /* bg-stone-100 */
+            color: #44403c; /* text-stone-700 */
+            scroll-behavior: smooth;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Adjusted for potentially smaller charts */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+                max-height: 400px;
+            }
+        }
+        .nav-link {
+            @apply px-3 py-2 rounded-md text-sm font-medium text-stone-100 hover:bg-sky-700 hover:text-white transition-colors;
+        }
+        .nav-link.active {
+            @apply bg-sky-700 text-white;
+        }
+        .tool-card {
+            @apply bg-white p-4 rounded-lg shadow-md border border-stone-200 hover:shadow-lg transition-shadow duration-300;
+        }
+        .tool-card h3 {
+            @apply text-lg font-semibold text-sky-700 mb-1;
+        }
+        .tool-card p {
+            @apply text-sm text-stone-600 mb-2;
+        }
+        .tool-card .notes {
+            @apply text-xs text-rose-600 italic;
+        }
+        .tool-card .url {
+            @apply text-xs text-sky-600 hover:underline break-all;
+        }
+        .section-title {
+            @apply text-3xl font-bold text-sky-800 mb-3 text-center;
+        }
+        .section-intro {
+            @apply text-md text-stone-600 mb-6 max-w-3xl mx-auto text-center leading-relaxed;
+        }
+         .sticky-nav {
+            position: -webkit-sticky; /* Safari */
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .flowchart-item {
+            background-color: #FFFFFF;
+            border: 2px solid #0ea5e9; /* sky-500 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            min-width: 180px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            color: #44403c; /* stone-700 */
+        }
+        .flowchart-arrow {
+            font-size: 1.5rem;
+            color: #0c4a6e; /* sky-800 */
+        }
+         .swot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .swot-card {
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .swot-card h4 {
+            font-size: 1.15rem; /* Slightly smaller */
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .swot-strength { background-color: #dcfce7; color: #166534; } /* green-100, green-800 */
+        .swot-weakness { background-color: #ffedd5; color: #9a3412; } /* orange-100, orange-800 */
+        .swot-opportunity { background-color: #dbeafe; color: #1e40af; } /* blue-100, blue-800 */
+        .swot-threat { background-color: #fee2e2; color: #991b1b; } /* red-100, red-800 */
+    </style>
+</head>
+<body>
+    <header class="bg-sky-800 text-white py-8 shadow-lg">
+        <div class="container mx-auto px-6 text-center">
+            <h1 class="text-4xl font-bold">Explorador de Recursos de Tecnología Musical</h1>
+            <p class="mt-2 text-lg text-sky-100">Basado en la Guía Midnight Music 2024-2025</p>
+        </div>
+    </header>
+
+    <nav id="main-nav" class="sticky-nav bg-sky-600 shadow-md py-2">
+        <div class="container mx-auto px-2 sm:px-4">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="flex space-x-1 overflow-x-auto pb-2 -mb-2" id="nav-links-container">
+                        <a href="#introduction" class="nav-link active">Introducción</a>
+                        </div>
+                </div>
+                <div class="ml-4">
+                     <input type="text" id="search-input" placeholder="Buscar herramienta..." class="px-3 py-2 border border-stone-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-stone-700">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <section id="introduction" class="py-8 scroll-mt-20">
+            <h2 class="section-title">Bienvenida al Explorador de Recursos</h2>
+            <p class="section-intro">
+                Este explorador interactivo te permite navegar por la vasta colección de herramientas tecnológicas para la educación musical presentadas en la "Guía Definitiva de Recursos de Tecnología Musical Midnight Music 2024-2025". El objetivo es facilitar el descubrimiento y la selección de recursos que puedan enriquecer tu práctica pedagógica, fomentar la creatividad y mejorar la eficiencia en el aula de música.
+            </p>
+            <p class="section-intro">
+                La guía original es un testimonio de cómo la tecnología ha evolucionado de ser una novedad a una herramienta indispensable. La inclusión de categorías como IA para la productividad, generación de música con IA y separadores de pistas con IA, refleja las tendencias más actuales y el potencial transformador de estas innovaciones.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 my-8">
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-700 mb-2 text-center">Distribución de Herramientas por Categoría Principal</h3>
+                    <p class="text-sm text-stone-600 mb-4 text-center">Visualiza las categorías con mayor concentración de herramientas (Top 10).</p>
+                    <div class="chart-container bg-white p-4 rounded-lg shadow">
+                        <canvas id="toolsPerCategoryChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-700 mb-2 text-center">Prevalencia de la Inteligencia Artificial</h3>
+                    <p class="text-sm text-stone-600 mb-4 text-center">Proporción de categorías dedicadas específicamente a herramientas de IA.</p>
+                    <div class="chart-container bg-white p-4 rounded-lg shadow">
+                        <canvas id="aiProportionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+             <div class="mt-12 bg-white p-6 rounded-lg shadow">
+                <h3 class="text-xl font-semibold text-sky-700 mb-4 text-center">La IA como Asistente del Educador Musical</h3>
+                <p class="text-sm text-stone-600 mb-6 text-center">La Inteligencia Artificial está transformando la labor docente, automatizando tareas y ofreciendo nuevas posibilidades para la personalización del aprendizaje.</p>
+                <div class="flex flex-col items-center gap-4">
+                    <div class="flowchart-item w-full max-w-md"><strong>Punto de Partida:</strong> Necesidades del Educador</div>
+                    <div class="flowchart-arrow">⬇️</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl">
+                        <div class="flowchart-item"><strong>IA para Productividad</strong><br><small>(Planificación, Feedback, Admin)</small></div>
+                        <div class="flowchart-item"><strong>IA para Creación Musical</strong><br><small>(Generación de ideas, Acompañamientos)</small></div>
+                        <div class="flowchart-item"><strong>IA para Análisis y Transcripción</strong><br><small>(Audio a MIDI/partitura)</small></div>
+                    </div>
+                    <div class="flowchart-arrow">⬇️</div>
+                    <div class="flowchart-item bg-sky-600 text-white w-full max-w-md"><strong>Resultado:</strong> Enseñanza Enriquecida y Eficiente</div>
+                </div>
+            </div>
+        </section>
+
+        <div id="tools-sections-container">
+            </div>
+        
+        <section id="analysis-insights" class="py-8 scroll-mt-20">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="section-title">La Necesidad de Curación Continua</h2>
+                <p class="section-intro">
+                    El ecosistema de la tecnología musical es dinámico. Las herramientas evolucionan, aparecen nuevas y otras desaparecen. La "Guía Definitiva", aunque invaluable, es una instantánea en el tiempo. Para el educador, esto implica la necesidad de una curación y revisión continuas, desarrollando una alfabetización digital que permita investigar, evaluar y adaptar nuevas soluciones de forma autónoma. La verdadera guía es la habilidad de adaptarse en este entorno digital volátil.
+                </p>
+                 <h3 class="text-xl font-semibold text-sky-700 mb-4 text-center mt-8">Análisis DAFO: El Educador Musical en el Entorno Tecnológico</h3>
+                 <p class="text-sm text-stone-600 mb-6 text-center">Comprendiendo las fortalezas, debilidades, oportunidades y amenazas al integrar la tecnología en la educación musical.</p>
+                <div class="swot-grid">
+                    <div class="swot-card swot-strength">
+                        <h4>✅ Fortalezas</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Abundancia de recursos gratuitos/freemium.</li>
+                            <li>Comunidades activas de educadores.</li>
+                            <li>Herramientas cada vez más intuitivas.</li>
+                        </ul>
+                    </div>
+                    <div class="swot-card swot-weakness">
+                        <h4>⚠️ Debilidades</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Rápida obsolescencia de herramientas.</li>
+                            <li>Curva de aprendizaje para nuevas tecnologías.</li>
+                            <li>Posible sobrecarga de opciones.</li>
+                        </ul>
+                    </div>
+                    <div class="swot-card swot-opportunity">
+                        <h4>🚀 Oportunidades</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>IA para personalizar aprendizaje y liberar tiempo.</li>
+                            <li>Nuevas formas de expresión creativa y colaboración.</li>
+                            <li>Acceso global a recursos y desarrollo profesional.</li>
+                        </ul>
+                    </div>
+                    <div class="swot-card swot-threat">
+                        <h4>🛑 Amenazas</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Brecha digital (acceso y habilidades).</li>
+                            <li>Necesidad de desarrollo profesional continuo.</li>
+                            <li>Privacidad y seguridad de datos.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-sky-800 text-sky-100 py-8 text-center mt-12">
+        <p>Contenido basado en la "Guía Definitiva de Recursos de Tecnología Musical 2024-2025" de Katie Argyle, Midnight Music.</p>
+        <p>SPA desarrollada con fines educativos y de exploración.</p>
+        <p>&copy; 2025 Explorador Interactivo</p>
+    </footer>
+
+    <script>
+        const musicTechResources = [
+            // Herramientas de Creatividad Accesible
+            { category: "Herramientas de Creatividad Accesible", name: "Body Synth", description: "Permite tocar un instrumento usando el movimiento corporal (webcam, mouse, teclado). Se selecciona sonido, acorde y se mueve el cuerpo. Opción experimental de comando de voz.", url: null, notes: "Parte de Google Creatability Experiments." },
+            { category: "Herramientas de Creatividad Accesible", name: "Clarion Lite", description: "Instrumento en línea con tonos representados por formas coloridas. Sonidos activados por seguimiento corporal (webcam) o ratón.", url: null, notes: "Parte de Google Creatability Experiments." },
+            { category: "Herramientas de Creatividad Accesible", name: "Keyboard", description: "Teclado en pantalla activado por seguimiento corporal (webcam), ratón o teclado del ordenador. Permite elegir notas, escala, tonalidad, sonido y parte del cuerpo a seguir.", url: null, notes: "Parte de Google Creatability Experiments." },
+            { category: "Herramientas de Creatividad Accesible", name: "Sampler", description: "Reproduce muestras de música cortas en un género elegido, activando sonidos mediante seguimiento corporal. Permite subir sonidos propios.", url: null, notes: "Parte de Google Creatability Experiments." },
+            { category: "Herramientas de Creatividad Accesible", name: "Seeing Music", description: "Visualiza el tono, las formas de onda y más. La voz se capta por micrófono y se muestra visualmente, con opciones de visualización, incluyendo nombres de notas.", url: null, notes: "Parte de Google Creatability Experiments." },
+            { category: "Herramientas de Creatividad Accesible", name: "Sound Canvas", description: "Permite dibujar imágenes que producen sonido; a medida que la línea sube, el tono aumenta. Se puede dibujar con ratón o seguimiento corporal. Útil para enseñar sobre tonos altos/bajos o notación gráfica.", url: null, notes: "Parte de Google Creatability Experiments." },
+            { category: "Herramientas de Creatividad Accesible", name: "Word Synth", description: "Permite escribir palabras, seleccionar tonos y escuchar a Word Synth cantarlas. Se puede ajustar escala, tonalidad, \"cantidad de canto\" y tempo.", url: null, notes: "Parte de Google Creatability Experiments." },
+            
+            // Herramientas de Productividad para Profesores con IA
+            { category: "Herramientas de Productividad para Profesores con IA", name: "Brisk Teaching", description: "Extensión de Chrome que se integra con Google, ayuda a profesores a dar feedback, crear currículo, cuestionarios, gestionar tareas administrativas y traducir.", url: null, notes: "" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "ChatGPT", description: "Modelo de lenguaje avanzado de Open AI, útil como asistente personal para planificación de lecciones, rúbricas, correos, diferenciación y materiales didácticos.", url: "https://chat.openai.com/", notes: "" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "MagicSchool", description: "Asistente de IA para profesores con más de 60 herramientas para planificar lecciones, escribir evaluaciones, redactar comunicaciones, diferenciar tareas. Incluye generador de preguntas/resúmenes de YouTube y generador de canciones.", url: null, notes: "" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "Edcafe AI", description: "Herramienta de IA \"todo en uno\" que genera contenido didáctico interactivo, planes de lecciones, cuestionarios, fichas, comprensión lectora, texto a voz, texto a imagen y chatbots personalizados. Ofrece un centro de colaboración.", url: null, notes: "Nuevo, Freemium" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "ClassPoint AI", description: "Genera preguntas de cuestionario a partir de diapositivas de PowerPoint, con ajuste de nivel de Taxonomía de Bloom y soporte multilingüe.", url: null, notes: "Nuevo, Freemium" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "Writesonic", description: "Genera todo tipo de contenido optimizado para SEO y libre de plagio.", url: "https://writesonic.com/", notes: "Nuevo" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "Escribelo", description: "Para resumir y generar contenido escrito en 27 idiomas.", url: "https://escribelo.ai/", notes: "Nuevo" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "Resoomer", description: "Sintetiza textos de forma automática.", url: "https://resoomer.com/es/", notes: "Nuevo" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "DeepL", description: "Para hacer traducciones impecables en 31 idiomas.", url: "https://www.deepl.com/translator", notes: "Nuevo" },
+            { category: "Herramientas de Productividad para Profesores con IA", name: "Grammarly", description: "Para corregir la gramática y agregar calidad a la escritura.", url: "https://www.grammarly.com/", notes: "Nuevo" },
+
+            // Transcripción de Audio con IA
+            { category: "Transcripción de Audio con IA", name: "Basic Pitch", description: "Convertidor gratuito de audio a MIDI de Spotify. Convierte grabaciones de un solo instrumento en MIDI para edición en DAW.", url: null, notes: "" },
+            { category: "Transcripción de Audio con IA", name: "Klang.io", description: "Software de transcripción de audio con IA para instrumentos individuales, crea notación y MIDI. Resultados mejores con música sencilla.", url: null, notes: "" },
+            { category: "Transcripción de Audio con IA", name: "ScoreCloud", description: "Traduce grabaciones (teclado, MIDI, voz) a notación. Gratuito para hasta 10 canciones guardadas.", url: "https://scorecloud.com/", notes: "" },
+            { category: "Transcripción de Audio con IA", name: "piano2notes", description: "Herramienta líder en transcripción automática de piano, pasa audio de piano a partitura con gran precisión.", url: null, notes: "Nuevo" },
+            { category: "Transcripción de Audio con IA", name: "Melody Scanner", description: "Convierte canciones en partituras en línea, aceptando MP3, MIDI, WAV o videos de YouTube para extraer acordes.", url: "https://melodyscanner.com/", notes: "Nuevo" },
+            { category: "Transcripción de Audio con IA", name: "Flat.io", description: "Permite personalizar y editar partituras en tiempo real después de la transcripción, facilitando la colaboración.", url: "https://flat.io", notes: "Nuevo (también en Notación)" },
+
+            // Generación de Música con IA
+            { category: "Generación de Música con IA", name: "Suno", description: "Genera canciones a partir de texto (tema, estilo), incluyendo letras cantadas. Versión gratuita permite hasta 10 canciones/día.", url: "https://suno.ai/", notes: "" },
+            { category: "Generación de Música con IA", name: "Udio", description: "Crea canciones a partir de prompts de texto, especificando tema, género, estilo y otras palabras descriptivas.", url: "https://www.udio.com/", notes: "" },
+            { category: "Generación de Música con IA", name: "Soundverse", description: "Chatbot de texto a música con IA, incluye separación de pistas y función de arreglo con bloques de sonido.", url: null, notes: "" },
+            { category: "Generación de Música con IA", name: "Loudly", description: "Permite crear música innovadora y sorprendente con IA, explorando nuevos géneros y estilos.", url: "https://www.loudly.com/crear-musica-con-inteligencia-artificial", notes: "Nuevo" },
+            
+            // Separadores de Pistas (Stems) con IA
+            { category: "Separadores de Pistas (Stems) con IA", name: "Moises", description: "Separa pistas en archivos de audio (vocales, guitarra, bajo, batería) usando IA. Cuenta gratuita permite 5 pistas/mes (menos de 5 min).", url: "https://moises.ai/", notes: "" },
+            { category: "Separadores de Pistas (Stems) con IA", name: "Ultimate Vocal Remover", description: "Herramienta gratuita de separación de pistas (hasta 10 min/24h). Permite elegir modelos de IA y descargar pistas vocales/acompañamiento separadas.", url: null, notes: "" },
+            { category: "Separadores de Pistas (Stems) con IA", name: "Vocal Remover", description: "Separa voces de canciones subidas, o divide en \"stems\" individuales. Incluye cortador, unidor, ajuste de tono/tempo y buscador de tonalidad/BPM.", url: "https://vocalremover.org/", notes: "" },
+            { category: "Separadores de Pistas (Stems) con IA", name: "Vidnoz Eliminador de Voz Online Gratis", description: "Separa voz de música con IA de forma automática y profesional, extrayendo voces y eliminando ruido de fondo. Admite MP3/WAV/M4A/OGG/FLAC de hasta 50 MB.", url: "https://es.vidnoz.com/eliminador-de-voz.html", notes: "Nuevo" },
+
+            // Evaluación, Juegos y Cuestionarios
+            { category: "Evaluación, Juegos y Cuestionarios", name: "Blooket", description: "Crea juegos y cuestionarios rápidamente. Un conjunto de preguntas puede usarse en varios modos de juego.", url: "https://www.blooket.com/", notes: "" },
+            { category: "Evaluación, Juegos y Cuestionarios", name: "Edpuzzle", description: "Superpone preguntas y/o narración en videos de YouTube, Khan Academy, TED o videos propios. Versión gratuita permite 20 lecciones.", url: "https://edpuzzle.com/", notes: "" },
+            { category: "Evaluación, Juegos y Cuestionarios", name: "Wordwall", description: "Herramienta de cuestionarios/juegos. Se introduce contenido y se elige plantilla de juego. Fácil de configurar y reutilizar contenido.", url: "https://wordwall.net/", notes: "" },
+            { category: "Evaluación, Juegos y Cuestionarios", name: "Music Tech Teacher by Karen Garrett", description: "Sitio con juegos y cuestionarios de música, muchos actualizados y utilizables con reproductor en página.", url: "http://www.musictechteacher.com/", notes: "" },
+            { category: "Evaluación, Juegos y Cuestionarios", name: "Blob Opera", description: "Experimento de aprendizaje automático para componer ópera utilizando \"manchas animadas\" que cantan. Permite grabar.", url: "https://artsandculture.google.com/experiment/blob-opera/AAHWrq360NcGbw?hl=es", notes: "Nuevo, Parte de Google Arts & Culture" },
+
+            // Grabación y Edición de Audio
+            { category: "Grabación y Edición de Audio", name: "Audacity", description: "Excelente software gratuito de grabación y edición de audio. Permite transponer, cambiar tempo, crear medleys, añadir fundidos y efectos.", url: "https://www.audacityteam.org/", notes: "Software de escritorio" },
+            { category: "Grabación y Edición de Audio", name: "BandLab for Education", description: "Estación de trabajo de audio digital para Chromebooks, Macs y PCs. Para proyectos musicales o podcasts. Versión EDU con sistema de gestión para trabajos de estudiantes.", url: "https://edu.bandlab.com/", notes: "" },
+            { category: "Grabación y Edición de Audio", name: "Soundtrap", description: "Fantástica estación de trabajo de audio digital en línea que funciona en todos los dispositivos. Para proyectos musicales/podcast, grabar/editar, acceso a loops e instrumentos virtuales.", url: "https://www.soundtrap.com/", notes: "Freemium" },
+            { category: "Grabación y Edición de Audio", name: "GarageBand", description: "Estación de trabajo de audio digital para Mac OS, gratuita con dispositivos Apple. Fácil de usar para principiantes.", url: null, notes: "Solo Apple" },
+            { category: "Grabación y Edición de Audio", name: "Cakewalk by BandLab", description: "Software profesional gratuito para usuarios de Windows. Considerado de alto nivel de profesionalidad.", url: "https://www.bandlab.com/products/cakewalk", notes: "Nuevo, solo Windows" },
+
+            // Clipart y Otras Imágenes
+            { category: "Clipart y Otras Imágenes", name: "Flaticon", description: "Enorme colección de iconos y pegatinas (estáticos y animados) para materiales didácticos. Requiere atribución en plan gratuito.", url: "https://www.flaticon.es/", notes: "" },
+            { category: "Clipart y Otras Imágenes", name: "Pixabay Images", description: "Referencia para fotos y gráficos de dominio público (música y no música). Incluye audio, video y efectos de sonido.", url: "https://pixabay.com/es/", notes: "" },
+            { category: "Clipart y Otras Imágenes", name: "Unsplash", description: "Hermosas imágenes gratuitas e ilustraciones vectoriales para usar en materiales didácticos.", url: "https://unsplash.com/es", notes: "" },
+
+            // Composición y Escritura de Canciones
+            { category: "Composición y Escritura de Canciones", name: "Song Maker - Chrome Music Lab", description: "Versión extendida de Melody Maker. Crea notas en cuadrícula, reproduce. Ajusta duración, compás, rango de notas, tempo e instrumentos.", url: "https://musiclab.chromeexperiments.com/Song-Maker/", notes: "" },
+            { category: "Composición y Escritura de Canciones", name: "Hookpad - Hooktheory", description: "Secuenciador de estilo gráfico para construir progresiones de acordes y melodías. Sugiere acordes y asiste en escritura de melodías.", url: "https://www.hooktheory.com/hookpad", notes: "Freemium" },
+            { category: "Composición y Escritura de Canciones", name: "RhymeZone", description: "Motor de búsqueda para encontrar rimas, sinónimos, antónimos, frases comunes para letras de canciones/raps.", url: "https://www.rhymezone.com/", notes: "" },
+
+            // Creación de Recursos Didácticos
+            { category: "Creación de Recursos Didácticos", name: "Canva", description: "Herramienta de diseño popular para crear materiales didácticos. Extensa biblioteca de imágenes, clipart, iconos, fuentes y plantillas. Educadores acceden a cuenta Pro gratis.", url: "https://www.canva.com/", notes: "Canva for Education es gratuito para educadores." },
+            { category: "Creación de Recursos Didácticos", name: "Adobe Express", description: "Herramienta de creación multimedia todo en uno (imágenes, videos, documentos, marketing). Incluye plantillas y funciones de IA. Escuelas K-12 acceden a funciones Pro gratis.", url: "https://www.adobe.com/express/", notes: "Gratuito para K-12" },
+            { category: "Creación de Recursos Didácticos", name: "Remove.bg", description: "Elimina instantáneamente el fondo blanco de una imagen para hacerla transparente.", url: "https://www.remove.bg/", notes: "" },
+            { category: "Creación de Recursos Didácticos", name: "Craiyon", description: "Herramienta de IA para transformar palabras en dibujos, fotos o arte.", url: "https://www.craiyon.com/", notes: "Nuevo, IA generativa de imágenes" },
+
+            // Portafolios Digitales
+            { category: "Portafolios Digitales", name: "Google Sites", description: "Creador de sitios web gratuito de Google. Solución perfecta para portafolios digitales de estudiantes, con flexibilidad para multimedia y organización.", url: "https://sites.google.com/", notes: "" },
+            { category: "Portafolios Digitales", name: "Seesaw", description: "Plataforma de aula para capturar y compartir el aprendizaje de estudiantes. Profesores crean actividades interactivas, estudiantes responden con multimedia. Popular con jóvenes estudiantes.", url: "https://web.seesaw.me/", notes: "Freemium" },
+            { category: "Portafolios Digitales", name: "Wakelet", description: "Recopila, organiza, cura y comparte multimedia (enlaces, documentos, videos). Perfecto para portafolios digitales de estudiantes y organización de recursos para profesores.", url: "https://wakelet.com/", notes: "" },
+
+            // Software de DJ
+            { category: "Software de DJ", name: "Mixxx", description: "Software de DJ de código abierto avanzado y gratuito (Mac, Windows, Linux). Incluye detección y sincronización de BPM/tonalidad, soporte de controlador, efectos de sonido.", url: "https://mixxx.org/", notes: "" },
+            { category: "Software de DJ", name: "Virtual DJ", description: "Software de DJ popular y versátil (Mac, Windows) con interfaz amigable. Incluye mezclador DJ independiente, detección automática de dispositivos, mezcla básica de video/audio, separación de audio en tiempo real.", url: "https://www.virtualdj.com/", notes: "Versión Home gratuita" },
+            { category: "Software de DJ", name: "Serato DJ Lite", description: "Versión gratuita del software Serato DJ.", url: "https://serato.com/dj/lite", notes: "Nuevo" },
+
+            // Entrenamiento Auditivo
+            { category: "Entrenamiento Auditivo", name: "Teoria Ear Training", description: "Serie de ejercicios de entrenamiento auditivo gratuitos. Elige configuraciones, guarda puntuaciones.", url: "https://www.teoria.com/es/ejercicios/", notes: "" },
+            { category: "Entrenamiento Auditivo", name: "Theta Music Trainer", description: "Variedad de juegos innovadores (aprox. 50) para entrenamiento auditivo y teoría musical. Primeros 3 niveles gratis.", url: "https://trainer.thetamusic.com/", notes: "Freemium" },
+            { category: "Entrenamiento Auditivo", name: "ToneGym", description: "Aplicación web de entrenamiento auditivo con interfaz elegante y gamificación. Ejercicios de identificación de intervalos y reconocimiento de progresiones de acordes. Concursos.", url: "https://www.tonegym.co/", notes: "Nuevo, Freemium" },
+
+            // Planes de Lecciones y PD Gratuitos
+            { category: "Planes de Lecciones y PD Gratuitos", name: "BBC Ten Pieces", description: "Colección creciente de recursos para enseñar piezas clásicas. Incluye planes de lecciones, materiales didácticos y arreglos orquestales/corales.", url: "https://www.bbc.co.uk/teach/ten-pieces", notes: "" },
+            { category: "Planes de Lecciones y PD Gratuitos", name: "Learning Music (Ableton)", description: "Serie de lecciones interactivas paso a paso de Ableton sobre creación musical (ritmos, notas, escalas, acordes, líneas de bajo, melodías).", url: "https://learningmusic.ableton.com/", notes: "" },
+            { category: "Planes de Lecciones y PD Gratuitos", name: "TeachRock", description: "Extensa colección de lecciones y actividades que usan historia de música popular y cultura. Planes de lecciones desarrollados por expertos. Completamente gratuito.", url: "https://teachrock.org/", notes: "" },
+            { category: "Planes de Lecciones y PD Gratuitos", name: "Music Theory (musictheory.net)", description: "Ofrece lecciones interactivas sobre conceptos básicos, ritmo, escalas, intervalos, acordes y progresiones, con ejercicios para identificar notas, construir acordes y entrenar el oído.", url: "https://www.musictheory.net/lessons", notes: "Nuevo" },
+            { category: "Planes de Lecciones y PD Gratuitos", name: "Khan Academy - Música Clásica", description: "Curso gratuito en línea con elementos visuales y auditivos, cubriendo historia de compositores y análisis de obras.", url: "https://es.khanacademy.org/humanities/music", notes: "Nuevo" },
+
+            // Identificar Notas en el Pentagrama
+            { category: "Identificar Notas en el Pentagrama", name: "Note Identification Trainer (musictheory.net)", description: "Identifica notas en pentagrama. Personaliza ejercicio, activa/desactiva temporizador y puntuación.", url: "https://www.musictheory.net/exercises/note", notes: "" },
+            { category: "Identificar Notas en el Pentagrama", name: "Staff Dungeon by Dr. Musik", description: "Navega por niveles de una mazmorra medieval nombrando notas en el pentagrama.", url: null, notes: "Parte de Dr. Musik" },
+
+            // Gestionar la Clase
+            { category: "Gestionar la Clase", name: "Classroom Screen", description: "Pantalla personalizable tipo pizarra. Ahorra voz, gestiona comportamientos, muestra reloj, encuesta, selecciona estudiantes, temporizador. Cuenta básica gratuita.", url: "https://classroomscreen.com/", notes: "" },
+            { category: "Gestionar la Clase", name: "Wheel of Names", description: "Herramienta de selección de rueda personalizable. Elige estudiantes al azar, siguiente canción, etc. Añade texto o imágenes.", url: "https://wheelofnames.com/", notes: "" },
+            { category: "Gestionar la Clase", name: "Padlet", description: "Lienzos digitales colaborativos para usos de pizarra, lecciones y actividades. Permite crear \"sandboxes\" para actividades educativas.", url: "https://es.padlet.com/", notes: "Nuevo, Freemium" },
+
+            // Descubrimiento e Historia de la Música
+            { category: "Descubrimiento e Historia de la Música", name: "Every Noise All At Once", description: "Explora géneros musicales específicos (de techno a ópera). Busca por artista o género para muestras de \"sonido\". Muy completo.", url: "http://everynoise.com/", notes: "" },
+            { category: "Descubrimiento e Historia de la Música", name: "Musicmap", description: "Explora música de diferentes géneros a través de un mapa musical. Zoom para estilos específicos. Lee sobre estilos, escucha ejemplos en Spotify/YouTube.", url: "https://musicmap.info/", notes: "" },
+            { category: "Descubrimiento e Historia de la Música", name: "Radiooooo", description: "Explora música de diferentes países y eras. Clica ubicación y década para escuchar selección aleatoria.", url: "https://radiooooo.com/", notes: "" },
+
+            // Teoría Musical
+            { category: "Teoría Musical", name: "Musictheory.net", description: "Lecciones de teoría musical paso a paso y ejercicios interactivos. Profesores crean ejercicios personalizados con enlace especial.", url: "https://www.musictheory.net/", notes: "" },
+            { category: "Teoría Musical", name: "Teoria", description: "Tutoriales, ejercicios, referencias y artículos de teoría musical. Control sobre configuración de ejercicios auditivos. Sección de análisis de obras.", url: "https://www.teoria.com/es/", notes: "" },
+            { category: "Teoría Musical", name: "Muted.io", description: "Colección de herramientas interactivas de teoría musical. Página \"Cheat Sheet\" muestra escalas, modos, acordes diatónicos, intervalos, grados de escala por tonalidad.", url: "https://muted.io/", notes: "" },
+
+            // Software de Notación
+            { category: "Software de Notación", name: "MuseScore", description: "Software de notación para Windows/Mac (no Chromebooks/iPads). Crea partituras con pentagramas ilimitados, cambios de tonalidad/compás, letras. Entrada por teclado/MIDI.", url: "https://musescore.org/es", notes: "Software de escritorio" },
+            { category: "Software de Notación", name: "Flat.io", description: "Software de notación en línea. Versión gratuita limitada (13+). Versión EDU de pago se integra con Google Classroom, Moodle, Edmodo.", url: "https://flat.io/", notes: "Freemium" },
+            { category: "Software de Notación", name: "Noteflight", description: "Software de notación en línea. Versión gratuita limitada (13+). Versión educativa de pago (Noteflight Learn) para todas las edades. Se integra con Soundtrap.", url: "https://www.noteflight.com/", notes: "Freemium" },
+            { category: "Software de Notación", name: "Dorico SE", description: "Versión de escritorio gratuita y limitada de Dorico. Máximo 8 intérpretes/pentagramas.", url: "https://www.steinberg.net/dorico/se/", notes: "Software de escritorio" },
+
+            // Pizarras Blancas en Línea
+            { category: "Pizarras Blancas en Línea", name: "FigJam", description: "Pizarra blanca en línea gratuita para educadores verificados. Para compartir ideas, colaborar y diseñar. Incluye plantillas para juegos, diagramas, agendas, listas, temporizador.", url: "https://www.figma.com/figjam/", notes: "Gratuito para educadores" },
+            { category: "Pizarras Blancas en Línea", name: "Whiteboard.chat", description: "Pizarra blanca con muchas funciones: dibujar, crear formas, añadir imágenes/audio. Elementos prefabricados (notas, claves). Colaboración de estudiantes en copias individuales.", url: "https://www.whiteboard.chat/", notes: "" },
+
+            // Orquesta, Compositores y Ópera
+            { category: "Orquesta, Compositores y Ópera", name: "Classics for Kids", description: "Colección de recursos de música clásica para jóvenes estudiantes. Incluye planes de lecciones y juegos gratuitos.", url: "https://www.classicsforkids.com/", notes: "" },
+            { category: "Orquesta, Compositores y Ópera", name: "NY Phil Learning Resources", description: "Extensa colección de actividades relacionadas con la orquesta para estudiantes (desde primeros años hasta secundaria). Recursos, guías y videos sobre orquesta, instrumentos, conceptos musicales y composición.", url: "https://nyphil.org/education/learning-resources", notes: "" },
+
+            // Herramientas de Referencia
+            { category: "Herramientas de Referencia", name: "Sweetwater Music Tech Glossary", description: "Extensa colección de términos de tecnología musical y sus definiciones. Incluye terminología de grabación y edición.", url: "https://www.sweetwater.com/insync/music-instrument-technology-glossary/", notes: "" },
+            { category: "Herramientas de Referencia", name: "Ukebuddy", description: "Sitio web complementario gratuito para aprender ukelele. Biblioteca de canciones con acordes, creador de acordes interactivo, biblioteca de acordes, creador de escalas y afinador.", url: "https://ukebuddy.com/", notes: "" },
+            { category: "Herramientas de Referencia", name: "Musicalecer - Glosario", description: "Proporciona definiciones de términos musicales y de producción.", url: "https://musicalecer.com/apendices/glosario/", notes: "Nuevo" },
+
+            // Remezclar, Organizar y Crear Loops
+            { category: "Remezclar, Organizar y Crear Loops", name: "Incredibox", description: "Sitio web interactivo popular de beatboxing y canto a capella. Arrastra icono de sonido a personajes para beatbox/cantar. Para arreglos, remezclas, beatboxing, armonía. Graba y comparte.", url: "https://www.incredibox.com/", notes: "Freemium (algunas versiones de pago)" },
+            { category: "Remezclar, Organizar y Crear Loops", name: "Kandinsky - Chrome Music Lab", description: "Dibuja líneas, garabatos o imágenes en pantalla. La imagen se convierte en sonido. Reproduce imagen como pieza en bucle.", url: "https://musiclab.chromeexperiments.com/Kandinsky/", notes: "" },
+            { category: "Remezclar, Organizar y Crear Loops", name: "Amped Studio", description: "Secuenciador en línea con máquina de ritmos virtual (Drumpler), muestras y loops gratuitos, clips de audio y MIDI, y frases melódicas preparadas.", url: "https://ampedstudio.com/es/caja-de-ritmos/", notes: "Nuevo, Freemium" },
+
+            // Patrones Rítmicos
+            { category: "Patrones Rítmicos", name: "Groove Pizza", description: "Creador de patrones de batería con interfaz circular tipo \"pizza\". Crea patrones con cuadrícula. Opción de ver ritmos como formas y ángulos (lecciones matemáticas/música). Exporta WAV/MIDI.", url: "https://apps.musedlab.org/groovepizza/?museid=t2PEBWn2g&", notes: "" },
+            { category: "Patrones Rítmicos", name: "Rhythm - Chrome Music Lab", description: "Crea ritmos en varios compases (3, 4, 5 o 6). Clica en cuadrícula para añadir/eliminar sonidos. Estudiantes pueden tocar con percusión corporal/instrumentos.", url: "https://musiclab.chromeexperiments.com/Rhythm/", notes: "" },
+
+            // Muestras, Efectos de Sonido y Archivos de Audio
+            { category: "Muestras, Efectos de Sonido y Archivos de Audio", name: "Youtube Audio Library", description: "Gran catálogo de música y sonidos gratuitos en YouTube Studio, filtrable por género y estado de ánimo. Requiere cuenta de Google.", url: "https://studio.youtube.com/channel/UC/music", notes: "Nuevo" },
+            { category: "Muestras, Efectos de Sonido y Archivos de Audio", name: "Free Sound", description: "Amplia librería de sonidos que requiere registro.", url: "https://freesound.org/", notes: "Nuevo" },
+            { category: "Muestras, Efectos de Sonido y Archivos de Audio", name: "99Sounds", description: "Paquetes de sonidos gratis, libres de derechos para cualquier proyecto creativo.", url: "https://99sounds.org/", notes: "Nuevo" },
+
+            // Ciencia del Sonido
+            { category: "Ciencia del Sonido", name: "Sound Waves - Chrome Music Lab", description: "Representación visual de cómo el sonido viaja por el aire. Ve ondas sonoras como moléculas de aire en movimiento o detalle de una molécula.", url: "https://musiclab.chromeexperiments.com/Sound-Waves/", notes: "" },
+            { category: "Ciencia del Sonido", name: "Spectrogram - Chrome Music Lab", description: "Ve espectrogramas (imágenes de sonido) producidos por objetos/instrumentos. Usa micrófono para grabar sonidos propios.", url: "https://musiclab.chromeexperiments.com/Spectrogram/", notes: "" },
+            { category: "Ciencia del Sonido", name: "Pink Trombone", description: "Modelo interactivo en línea del tracto vocal humano. Experimenta cambiando posición de lengua y cavidades orales para ajustar sonido.", url: "https://dood.al/pinktrombone/", notes: "" },
+
+            // Utilidades
+            { category: "Utilidades", name: "Online Metronome", description: "Metrónomo con funciones habituales y opción de configurar serie automatizada de compases con tiempos y tempos predeterminados.", url: "https://www.imusic-school.com/en/tools/online-metronome/", notes: "" },
+            { category: "Utilidades", name: "Instrument Tuner", description: "Afinador en línea simple. Requiere acceso a micrófono. Muestra tono musical y frecuencia.", url: "https://www.onlinemictest.com/tuners/pitch-detector/", notes: "" },
+            { category: "Utilidades", name: "Transpose (Extensión Chrome)", description: "Extensión para Chrome. Cambia tonalidad y velocidad de videos de YouTube. Configura \"bucle\" corto para práctica.", url: "https://chrome.google.com/webstore/detail/transpose-pitch-speed-lop/iohclfgidHMLggapehoddbnHnLociDCH", notes: "Extensión de navegador" },
+
+            // Videoclips y Material de Archivo
+            { category: "Videoclips y Material de Archivo", name: "Pixabay Videos", description: "Fantástica colección de material de archivo de video (HD) para proyectos multimedia o bandas sonoras.", url: "https://pixabay.com/es/videos/", notes: "" },
+            { category: "Videoclips y Material de Archivo", name: "Pexels Videos", description: "Banco de videos gratuitos.", url: "https://www.pexels.com/es-es/videos/", notes: "Nuevo" },
+            { category: "Videoclips y Material de Archivo", name: "Mixkit", description: "Biblioteca de videos, efectos de sonido, música y plantillas de video. Colección gratuita con nuevos contenidos semanales sin atribución.", url: "https://mixkit.co/", notes: "Nuevo" },
+
+            // Grabación y Edición de Video
+            { category: "Grabación y Edición de Video", name: "Clipchamp", description: "Editor de video en línea gratuito, rápido y fácil de usar. Incluye función de texto de karaoke.", url: "https://clipchamp.com/", notes: "" },
+            { category: "Grabación y Edición de Video", name: "Loom for Education", description: "Software de screencasting fácil de usar. Graba pantalla, webcam o ambos. Cuentas pro gratuitas para profesores.", url: "https://www.loom.com/education", notes: "Gratuito para educadores" },
+            { category: "Grabación y Edición de Video", name: "Screencastify", description: "Graba, edita y comparte videos fácilmente. Graba pantalla, webcam o ambos. Gratuito para los primeros 10 videos.", url: "https://www.screencastify.com/", notes: "Freemium" },
+            { category: "Grabación y Edición de Video", name: "VEED.IO - Creador gratuito de vídeos educativos", description: "Permite subir o grabar videos, editar (texto, imágenes, formas, dibujos), añadir audio y efectos de sonido. Incluye grabadora de pantalla/webcam y videos de stock.", url: "https://www.veed.io/es-ES/crear/creador-de-videos-educativos", notes: "Nuevo" },
+
+            // Instrumentos Virtuales
+            { category: "Instrumentos Virtuales", name: "Shared Piano - Chrome Music Lab", description: "Teclado colaborativo en línea. Activa sonidos con teclado de ordenador. Invita jugadores para crear música juntos.", url: "https://musiclab.chromeexperiments.com/Shared-Piano/", notes: "" },
+            { category: "Instrumentos Virtuales", name: "Virtual Piano - Musicca", description: "Piano en línea simple que muestra nombres de letras en las teclas.", url: "https://www.musicca.com/es/piano", notes: "" },
+            { category: "Instrumentos Virtuales", name: "Bongo Cat", description: "Bongos virtuales tocados por un gato. Toca platillos, cencerro, pandereta o maúlla. Muy popular.", url: "https://bongo.cat/", notes: "" },
+            { category: "Instrumentos Virtuales", name: "Virtual Drumming", description: "Set de batería virtual realista con samples de calidad. Para enseñar sobre kit de batería o como creador de ritmos básico.", url: "https://www.virtualdrumming.com/", notes: "" },
+
+            // Creación de Sitios Web
+            { category: "Creación de Sitios Web", name: "Google Sites", description: "Creador de sitios web gratuito de Google. Crea sitio web de clase, \"hogar\" para recursos didácticos o portafolios digitales de estudiantes.", url: "https://sites.google.com/", notes: "" },
+            { category: "Creación de Sitios Web", name: "Canva Website Builder", description: "Constructor de sitios web simple (Canva). Para sitio web de clase, CV o portafolio en línea. Educadores acceden a versión Pro gratis.", url: "https://www.canva.com/create/websites/", notes: "" },
+            { category: "Creación de Sitios Web", name: "Wordpress.com", description: "Creador de sitios web/blogs gratuito y popular. No requiere codificación. Cientos de tutoriales. Versión gratuita actualizable a Pro autoalojada.", url: "https://wordpress.com/", notes: "Freemium" }
+        ];
+        
+        const categoryIntroTexts = {
+            "Herramientas de Creatividad Accesible": "Estas herramientas innovadoras, muchas de Google Creatability Experiments, utilizan la webcam y la IA para democratizar la creación musical, permitiendo interacciones mediante el movimiento corporal o el dibujo. La accesibilidad aquí impulsa la innovación, expandiendo cómo definimos 'instrumento' y 'composición'.",
+            "Herramientas de Productividad para Profesores con IA": "La IA actúa como un asistente personal, automatizando tareas repetitivas y permitiendo a los educadores personalizar el contenido a un nivel sin precedentes. Esto maximiza el impacto del profesor en actividades de alto valor como la interacción directa y la enseñanza creativa.",
+            "Transcripción de Audio con IA": "Transforman grabaciones sonoras en partituras, un proceso que, aunque desafiante con música polifónica, ahorra tiempo y actúa como un puente cognitivo, fortaleciendo la conexión entre el oído y la teoría musical. Son un facilitador del aprendizaje auditivo-visual.",
+            "Generación de Música con IA": "Permiten crear nuevas composiciones o pistas de acompañamiento a partir de texto. Fomentan una 'deconstrucción creativa', donde los estudiantes generan y analizan música, convirtiendo la IA en una herramienta de aprendizaje activo y experimentación.",
+            "Separadores de Pistas (Stems) con IA": "Descomponen una pista de audio en sus componentes individuales (voces, batería, etc.), invaluable para crear pistas de acompañamiento, para el análisis detallado y para proyectos de remezcla. Transforman la práctica musical personalizada.",
+            "Evaluación, Juegos y Cuestionarios": "Integran elementos lúdicos para medir el progreso y reforzar el aprendizaje de forma divertida e interactiva, a menudo con retroalimentación instantánea. La gamificación es una palanca para la motivación y el desarrollo autónomo de habilidades.",
+            "Grabación y Edición de Audio": "Fundamentales para capturar interpretaciones, crear materiales y guiar a los estudiantes en la producción. La disponibilidad de software gratuito de alta calidad democratiza la producción musical, fomentando la autonomía y el empoderamiento creativo.",
+            "Clipart y Otras Imágenes": "Recursos visuales para crear materiales didácticos atractivos. El uso de imágenes específicas de música es una estrategia pedagógica que facilita la comprensión y retención, especialmente para aprendices visuales.",
+            "Composición y Escritura de Canciones": "Ayudan a organizar ideas, generar progresiones de acordes y guiar la creación de melodías. Reducen la 'barrera de la página en blanco', fomentando la experimentación, revisión y colaboración en un enfoque de 'diseño de sonido'.",
+            "Creación de Recursos Didácticos": "Permiten producir materiales como hojas de trabajo y presentaciones de forma eficiente. La combinación con IA generativa de imágenes permite crear materiales altamente personalizados y visualmente atractivos rápidamente.",
+            "Portafolios Digitales": "Excelentes para documentar la trayectoria musical y demostrar progreso. Fomentan una 'narrativa del aprendizaje', donde los estudiantes reflexionan sobre su proceso creativo, convirtiendo la evaluación en una experiencia significativa.",
+            "Software de DJ": "Permiten explorar la mezcla y remezcla, ofreciendo un enfoque práctico para aprender sobre producción e interpretación. Es una vía pedagógica rica para enseñar tempo, ritmo, estructura y armonía de forma práctica.",
+            "Entrenamiento Auditivo": "Herramientas tecnológicas para mejorar esta habilidad fundamental con ejercicios interactivos y retroalimentación. La personalización y gamificación son claves para el compromiso y el aprendizaje adaptativo.",
+            "Planes de Lecciones y PD Gratuitos": "Colecciones de planes y recursos que incorporan tecnología, vitales para el desarrollo profesional. La abundancia de recursos gratuitos exige que los educadores sean expertos en curación y se comprometan con el aprendizaje continuo.",
+            "Identificar Notas en el Pentagrama": "Fundamentales para ayudar a memorizar notas rápidamente. Las herramientas digitales con ejercicios interactivos y gamificación aceleran la adquisición de fluidez en la lectura musical.",
+            "Gestionar la Clase": "Esenciales para organizar el aula y lecciones eficientemente. Las plataformas digitales permiten una supervisión granular del progreso y facilitan la retroalimentación formativa, crucial para la diferenciación pedagógica.",
+            "Descubrimiento e Historia de la Música": "Permiten explorar diversos estilos, géneros, compositores y la evolución histórica de la música, a menudo con contenido multimedia. Fomentan la curiosidad y una comprensión más profunda del contexto cultural de la música.",
+            "Teoría Musical": "Sitios y aplicaciones que ofrecen lecciones interactivas, ejercicios y referencias para aprender y practicar los fundamentos de la teoría musical de manera accesible y estructurada.",
+            "Software de Notación": "Herramientas para crear, editar y compartir partituras musicales. Desde opciones simples en línea hasta software de escritorio más completo, facilitan la escritura y el estudio de la música.",
+            "Pizarras Blancas en Línea": "Espacios colaborativos digitales para compartir ideas, dibujar, anotar y facilitar lecciones interactivas, especialmente útiles en entornos de aprendizaje híbridos o a distancia.",
+            "Orquesta, Compositores y Ópera": "Recursos interactivos para explorar los instrumentos de la orquesta, la vida y obra de compositores, y el mundo de la ópera, a menudo a través de juegos, guías de escucha y videos.",
+            "Herramientas de Referencia": "Glosarios, diccionarios, bases de datos y colecciones de información útil para educadores y estudiantes de música, desde terminología técnica hasta colecciones de canciones folclóricas.",
+            "Remezclar, Organizar y Crear Loops": "Plataformas y aplicaciones que permiten a los usuarios experimentar con la manipulación de audio, la creación de loops y la remezcla de pistas existentes, fomentando la creatividad y la comprensión de la estructura musical.",
+            "Patrones Rítmicos": "Secuenciadores de batería y creadores de patrones rítmicos en línea que facilitan la exploración y creación de ritmos de forma visual e interactiva.",
+            "Muestras, Efectos de Sonido y Archivos de Audio": "Bibliotecas de sonidos, efectos y pistas de música de uso libre o bajo licencias Creative Commons, útiles para proyectos de creación musical, bandas sonoras y multimedia.",
+            "Ciencia del Sonido": "Herramientas y experimentos interactivos que ayudan a visualizar y comprender los principios físicos del sonido, como las ondas sonoras, las frecuencias y los armónicos.",
+            "Utilidades": "Herramientas prácticas como metrónomos, afinadores, convertidores de archivos y cambiadores de tempo/tono que asisten en la práctica y producción musical.",
+            "Videoclips y Material de Archivo": "Bancos de videoclips gratuitos o de bajo costo para usar en proyectos multimedia, creación de videos musicales o como material de fondo para presentaciones.",
+            "Grabación y Edición de Video": "Software y herramientas en línea para grabar, editar y compartir videos, desde editores simples hasta software de nivel profesional, esenciales para crear contenido educativo y documentar interpretaciones.",
+            "Instrumentos Virtuales": "Aplicaciones y sitios web que ofrecen versiones digitales de instrumentos musicales, permitiendo tocar y experimentar con diferentes sonidos usando un ordenador o dispositivo móvil.",
+            "Creación de Sitios Web": "Plataformas para construir sitios web de clase, portafolios digitales o blogs musicales, muchas con interfaces de arrastrar y soltar que no requieren conocimientos de codificación."
+        };
+
+
+        const categorySlugs = {};
+
+        function slugify(text) {
+            return text.toString().toLowerCase()
+                .replace(/\s+/g, '-')           // Replace spaces with -
+                .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+                .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+                .replace(/^-+/, '')             // Trim - from start of text
+                .replace(/-+$/, '');            // Trim - from end of text
+        }
+
+        function wrapLabel(str, maxWidth = 16) {
+            if (!str) return '';
+            if (str.length <= maxWidth) {
+                return str;
+            }
+            const words = str.split(' ');
+            let currentLine = '';
+            const lines = [];
+            for (const word of words) {
+                if ((currentLine + word).length > maxWidth && currentLine.length > 0) {
+                    lines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
+                }
+            }
+            lines.push(currentLine.trim());
+            return lines;
+        }
+        
+        const tooltipTitleCallback = function(tooltipItems) {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+              return label.join(' ');
+            } else if (typeof label === 'string') {
+              return label.replace(/,/g, ' '); // Handle cases where label might be a comma-separated string from multi-line
+            }
+            return label;
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinksContainer = document.getElementById('nav-links-container');
+            const toolsSectionsContainer = document.getElementById('tools-sections-container');
+            const searchInput = document.getElementById('search-input');
+
+            const categories = [...new Set(musicTechResources.map(tool => tool.category))].sort();
+
+            categories.forEach(category => {
+                const slug = slugify(category);
+                categorySlugs[category] = slug;
+
+                // Create Nav Link
+                const navLink = document.createElement('a');
+                navLink.href = `#${slug}`;
+                navLink.textContent = category;
+                navLink.classList.add('nav-link', 'flex-shrink-0');
+                navLinksContainer.appendChild(navLink);
+
+                // Create Section
+                const section = document.createElement('section');
+                section.id = slug;
+                section.classList.add('py-8', 'scroll-mt-20'); // scroll-mt-20 for sticky nav offset
+
+                const sectionTitle = document.createElement('h2');
+                sectionTitle.classList.add('section-title');
+                sectionTitle.textContent = category;
+                section.appendChild(sectionTitle);
+
+                if (categoryIntroTexts[category]) {
+                    const introPara = document.createElement('p');
+                    introPara.classList.add('section-intro');
+                    introPara.textContent = categoryIntroTexts[category];
+                    section.appendChild(introPara);
+                }
+
+                const toolsGrid = document.createElement('div');
+                toolsGrid.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3', 'gap-6');
+                toolsGrid.id = `tools-container-${slug}`;
+                section.appendChild(toolsGrid);
+                toolsSectionsContainer.appendChild(section);
+            });
+            
+            renderTools(musicTechResources); // Initial render of all tools
+
+            // Search functionality
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredTools = musicTechResources.filter(tool => 
+                    tool.name.toLowerCase().includes(searchTerm) || 
+                    tool.description.toLowerCase().includes(searchTerm) ||
+                    tool.category.toLowerCase().includes(searchTerm)
+                );
+                renderTools(filteredTools, searchTerm);
+            });
+            
+            // Active Nav Link on Scroll
+            const sections = document.querySelectorAll('main section[id]');
+            const navLi = document.querySelectorAll('#nav-links-container a');
+
+            window.addEventListener('scroll', () => {
+                let current = 'introduction'; // Default to introduction
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 120) { // Adjusted offset for sticky nav
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLi.forEach(a => {
+                    a.classList.remove('active');
+                    if (a.getAttribute('href') === `#${current}`) {
+                        a.classList.add('active');
+                    }
+                });
+            });
+
+
+            // Chart 1: Tools per Category (Top 10)
+            const categoryCounts = musicTechResources.reduce((acc, tool) => {
+                acc[tool.category] = (acc[tool.category] || 0) + 1;
+                return acc;
+            }, {});
+            
+            const sortedCategories = Object.entries(categoryCounts)
+                .sort(([,a],[,b]) => b-a)
+                .slice(0, 10);
+
+            const topCategoryLabels = sortedCategories.map(entry => wrapLabel(entry[0]));
+            const topCategoryData = sortedCategories.map(entry => entry[1]);
+
+            const toolsPerCategoryCtx = document.getElementById('toolsPerCategoryChart').getContext('2d');
+            new Chart(toolsPerCategoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: topCategoryLabels,
+                    datasets: [{
+                        label: 'Número de Herramientas',
+                        data: topCategoryData,
+                        backgroundColor: '#38bdf8', // sky-500
+                        borderColor: '#0ea5e9', // sky-600
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true, ticks: { color: '#44403c' }, grid: { color: '#d6d3d1' } },
+                        y: { ticks: { color: '#44403c', autoSkip: false }, grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { title: tooltipTitleCallback } }
+                    }
+                }
+            });
+
+            // Chart 2: AI Proportion
+            const aiCategories = ["Herramientas de Productividad para Profesores con IA", "Transcripción de Audio con IA", "Generación de Música con IA", "Separadores de Pistas (Stems) con IA"];
+            let aiCategoryCount = 0;
+            let totalCategories = categories.length;
+            categories.forEach(cat => {
+                if (aiCategories.includes(cat)) {
+                    aiCategoryCount++;
+                }
+            });
+
+            const aiProportionCtx = document.getElementById('aiProportionChart').getContext('2d');
+            new Chart(aiProportionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Categorías de IA', 'Otras Categorías'],
+                    datasets: [{
+                        data: [aiCategoryCount, totalCategories - aiCategoryCount],
+                        backgroundColor: ['#fb7185', '#38bdf8'], // rose-500, sky-500
+                        borderColor: '#f5f5f4', // stone-100
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#44403c' } },
+                        tooltip: { callbacks: { title: tooltipTitleCallback } }
+                    }
+                }
+            });
+        });
+
+        function renderTools(toolsToRender, searchTerm = '') {
+            // Clear existing tools from all grids
+            document.querySelectorAll('[id^="tools-container-"]').forEach(grid => grid.innerHTML = '');
+
+            toolsToRender.forEach(tool => {
+                const categorySlug = categorySlugs[tool.category];
+                const toolsGrid = document.getElementById(`tools-container-${categorySlug}`);
+                
+                if (toolsGrid) {
+                    const card = document.createElement('div');
+                    card.classList.add('tool-card', 'flex', 'flex-col', 'justify-between');
+                    
+                    let nameHTML = tool.name;
+                    let descriptionHTML = tool.description;
+
+                    if (searchTerm) {
+                        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                        nameHTML = tool.name.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
+                        descriptionHTML = tool.description.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
+                    }
+
+                    let urlLink = '';
+                    if (tool.url && tool.url !== "No URL provided") {
+                        urlLink = `<a href="${tool.url}" target="_blank" rel="noopener noreferrer" class="url">Visitar sitio</a>`;
+                    } else if (tool.url === "No URL provided") {
+                         urlLink = `<span class="text-xs text-stone-400 italic">URL no proporcionada</span>`;
+                    }
+
+                    card.innerHTML = `
+                        <div>
+                            <h3 class="text-lg font-semibold text-sky-700 mb-1">${nameHTML}</h3>
+                            <p class="text-sm text-stone-600 mb-2">${descriptionHTML}</p>
+                        </div>
+                        <div>
+                            ${tool.notes ? `<p class="notes">${tool.notes}</p>` : ''}
+                            ${urlLink}
+                        </div>
+                    `;
+                    toolsGrid.appendChild(card);
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>
